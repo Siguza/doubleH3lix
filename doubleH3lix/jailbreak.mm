@@ -10,8 +10,9 @@ extern "C"{
 #include <stdio.h>
 #include <stdint.h>
 
+#include "offsets.h"
 #include "common.h"
-#include "v0rtex.h"
+#include "exploit64.h"
 
 typedef mach_port_t io_service_t;
 typedef mach_port_t io_connect_t;
@@ -101,7 +102,7 @@ void resume_all_threads() {
 
 kern_return_t cb(task_t tfp0_, kptr_t kbase, void *data){
     resume_all_threads();
-    LOG("done v0rtex!\n");
+    LOG("exploit done!\n");
     tfp0 = tfp0_;
     tihmstar::offsetfinder64 *fi = static_cast<tihmstar::offsetfinder64 *>(data);
 
@@ -580,9 +581,9 @@ remappage[remapcnt++] = (x & (~PMK));\
     int mntr = mount("hfs", "/", 0x10000, &nm);
     printf("Mount succeeded? %d\n",mntr);
 
-    if (open("/v0rtex", O_CREAT | O_RDWR, 0644)>=0){
+    if (open("/dolan", O_CREAT | O_RDWR, 0644)>=0){
         printf("write test success!\n");
-        remove("/v0rtex");
+        remove("/dolan");
     }else
         printf("[!] write test failed!\n");
 
@@ -609,7 +610,22 @@ void die(){
 
 extern "C" int jailbreak(void)
 {
-    tihmstar::offsetfinder64 fi("/System/Library/Caches/com.apple.kernelcaches/kernelcache");
+    LOG("exploit\n");
+    suspend_all_threads();
+    vm_address_t kbase = 0;
+    task_t ktask = get_kernel_task(&kbase);
+    if(!MACH_PORT_VALID(ktask) || !kbase){
+        resume_all_threads();
+        postProgress(@"Kernelexploit failed");
+        printf("Kernelexploit failed, goodbye...\n");
+        sleep(3);
+        die();
+        return -1;
+    }
+
+    // TODO: dump kernel
+
+    tihmstar::offsetfinder64 fi("/System/Library/Caches/com.apple.kernelcaches/kernelcache"); // XXX
 
     offsets_t *off = NULL;
     try {
@@ -626,15 +642,8 @@ extern "C" int jailbreak(void)
         return -1;
     }
 
-    LOG("v0rtex\n");
-    suspend_all_threads();
-    if(v0rtex(off, &cb, &fi)){
-        resume_all_threads();
-        postProgress(@"Kernelexploit failed");
-        printf("Kernelexploit failed, goodbye...\n");
-        sleep(3);
-        die();
-    }
+    cb(ktask, kbase, &fi);
+
     LOG("done kernelpatches!");
     runLaunchDaemons();
     printf("ok\n");

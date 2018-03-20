@@ -8,8 +8,9 @@
 
 /* Begin PBXBuildFile section */
 		6848D100203CE91700A0FFE2 /* offsets.mm in Sources */ = {isa = PBXBuildFile; fileRef = 6848D0FD203CE91700A0FFE2 /* offsets.mm */; };
-		6848D101203CE91700A0FFE2 /* v0rtex.m in Sources */ = {isa = PBXBuildFile; fileRef = 6848D0FF203CE91700A0FFE2 /* v0rtex.m */; };
 		6848D104203CE93100A0FFE2 /* liboffsetfinder64.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 6848D103203CE93100A0FFE2 /* liboffsetfinder64.a */; };
+		687380C520607E690041E813 /* find.m in Sources */ = {isa = PBXBuildFile; fileRef = 687380C120607E690041E813 /* find.m */; };
+		687380C620607E690041E813 /* exploit64.m in Sources */ = {isa = PBXBuildFile; fileRef = 687380C320607E690041E813 /* exploit64.m */; };
 		68805418203CEB060003A817 /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 68805417203CEB060003A817 /* IOKit.framework */; };
 		87149C6D204872DB009658CA /* Cydia-10.tar in Resources */ = {isa = PBXBuildFile; fileRef = 87149C6C204872DB009658CA /* Cydia-10.tar */; };
 		872C2D6C203EE37600929D9E /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 87F9E9982039C51900C90C05 /* Main.storyboard */; };
@@ -32,9 +33,13 @@
 		6848D0FB203CE91700A0FFE2 /* common.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = common.h; sourceTree = "<group>"; };
 		6848D0FC203CE91700A0FFE2 /* offsets.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = offsets.h; sourceTree = "<group>"; };
 		6848D0FD203CE91700A0FFE2 /* offsets.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = offsets.mm; sourceTree = "<group>"; };
-		6848D0FE203CE91700A0FFE2 /* v0rtex.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = v0rtex.h; sourceTree = "<group>"; };
-		6848D0FF203CE91700A0FFE2 /* v0rtex.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = v0rtex.m; sourceTree = "<group>"; };
 		6848D103203CE93100A0FFE2 /* liboffsetfinder64.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = liboffsetfinder64.a; path = doubleH3lix/liboffsetfinder64.a; sourceTree = "<group>"; };
+		687380BF20607E680041E813 /* arch.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = arch.h; sourceTree = "<group>"; };
+		687380C020607E680041E813 /* find.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = find.h; sourceTree = "<group>"; };
+		687380C120607E690041E813 /* find.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = find.m; sourceTree = "<group>"; };
+		687380C220607E690041E813 /* exploit64.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = exploit64.h; sourceTree = "<group>"; };
+		687380C320607E690041E813 /* exploit64.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = exploit64.m; sourceTree = "<group>"; };
+		687380C420607E690041E813 /* mach-o.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "mach-o.h"; sourceTree = "<group>"; };
 		68805417203CEB060003A817 /* IOKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = IOKit.framework; sourceTree = "<group>"; };
 		87149C6C204872DB009658CA /* Cydia-10.tar */ = {isa = PBXFileReference; lastKnownFileType = archive.tar; name = "Cydia-10.tar"; path = "doubleH3lix/jbresources/Cydia-10.tar"; sourceTree = "<group>"; };
 		8757D090203CF2CB00B3A566 /* libapple_crypto.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libapple_crypto.tbd; path = usr/lib/libapple_crypto.tbd; sourceTree = SDKROOT; };
@@ -127,8 +132,12 @@
 				6848D0FB203CE91700A0FFE2 /* common.h */,
 				6848D0FC203CE91700A0FFE2 /* offsets.h */,
 				6848D0FD203CE91700A0FFE2 /* offsets.mm */,
-				6848D0FE203CE91700A0FFE2 /* v0rtex.h */,
-				6848D0FF203CE91700A0FFE2 /* v0rtex.m */,
+				687380BF20607E680041E813 /* arch.h */,
+				687380C220607E690041E813 /* exploit64.h */,
+				687380C320607E690041E813 /* exploit64.m */,
+				687380C020607E680041E813 /* find.h */,
+				687380C120607E690041E813 /* find.m */,
+				687380C420607E690041E813 /* mach-o.h */,
 				87F9E9982039C51900C90C05 /* Main.storyboard */,
 				87F9E99B2039C51900C90C05 /* Assets.xcassets */,
 				87F9E99D2039C51900C90C05 /* LaunchScreen.storyboard */,
@@ -215,10 +224,11 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				6848D101203CE91700A0FFE2 /* v0rtex.m in Sources */,
 				87F9E9972039C51900C90C05 /* ViewController.m in Sources */,
 				87F9E9A22039C51900C90C05 /* main.m in Sources */,
+				687380C520607E690041E813 /* find.m in Sources */,
 				87F9E9942039C51900C90C05 /* AppDelegate.m in Sources */,
+				687380C620607E690041E813 /* exploit64.m in Sources */,
 				87F9E9AD2039C66500C90C05 /* jailbreak.mm in Sources */,
 				6848D100203CE91700A0FFE2 /* offsets.mm in Sources */,
 			);
@@ -363,7 +373,7 @@
 				);
 				HEADER_SEARCH_PATHS = "$(PROJECT_DIR)/external/liboffsetfinder64/include";
 				INFOPLIST_FILE = doubleH3lix/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 10.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
@@ -389,7 +399,7 @@
 				);
 				HEADER_SEARCH_PATHS = "$(PROJECT_DIR)/external/liboffsetfinder64/include";
 				INFOPLIST_FILE = doubleH3lix/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 10.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
