@@ -9,10 +9,11 @@
 extern "C"{
 #include <stdio.h>
 #include <stdint.h>
+#include <mach-o/loader.h>
 
-#include "offsets.h"
-#include "common.h"
+#include "arch.h"
 #include "exploit64.h"
+#include "mach-o.h"
 
 typedef mach_port_t io_service_t;
 typedef mach_port_t io_connect_t;
@@ -49,7 +50,7 @@ extern int (*dsystem)(const char *);
 
 #define postProgress(prg) [[NSNotificationCenter defaultCenter] postNotificationName: @"JB" object:nil userInfo:@{@"JBProgress": prg}]
 
-#define KBASE 0xfffffff007004000
+#define KBASE 0xffffff8004004000
 mach_port_t tfp0 = 0;
 
 void kpp(uint64_t kernbase, uint64_t slide, tihmstar::offsetfinder64 *fi);
@@ -107,7 +108,7 @@ kern_return_t cb(task_t tfp0_, kptr_t kbase, void *data){
     tihmstar::offsetfinder64 *fi = static_cast<tihmstar::offsetfinder64 *>(data);
 
     try {
-        kpp(kbase,kbase-KBASE,fi);
+        kpp(kbase,0,fi);
     } catch (tihmstar::exception &e) {
         LOG("Failed jailbreak!: %s [%u]", e.what(), e.code());
         NSString *err = [NSString stringWithFormat:@"Error: %d",e.code()];
@@ -190,7 +191,7 @@ void kpp(uint64_t kernbase, uint64_t slide, tihmstar::offsetfinder64 *fi){
     gPhysBase = ReadAnywhere64(gStoreBase);
     gVirtBase = ReadAnywhere64(gStoreBase+8);
 
-    entryp = (uint64_t)fi->find_entry() + slide;
+    entryp = (uint64_t)fi->find_entry() + kernbase - KBASE;
     uint64_t rvbar = entryp & (~0xFFF);
 
     uint64_t cpul = fi->find_register_value((tihmstar::patchfinder64::loc_t)rvbar+0x40-slide, 1)+slide;
@@ -202,7 +203,7 @@ void kpp(uint64_t kernbase, uint64_t slide, tihmstar::offsetfinder64 *fi){
     uint64_t cpu_list = ReadAnywhere64(cpul - 0x10 /*the add 0x10, 0x10 instruction confuses findregval*/) - gPhysBase + gVirtBase;
     uint64_t cpu = ReadAnywhere64(cpu_list);
 
-    uint64_t pmap_store = (uint64_t)fi->find_kernel_pmap() + slide;
+    uint64_t pmap_store = (uint64_t)fi->find_kernel_pmap_nosym() + slide;
     NSLog(@"pmap: %llx", pmap_store);
     level1_table = ReadAnywhere64(ReadAnywhere64(pmap_store));
 
@@ -471,23 +472,23 @@ remappage[remapcnt++] = (x & (~PMK));\
     std::vector<tihmstar::patchfinder64::patch> kernelpatches;
     kernelpatches.push_back(fi->find_i_can_has_debugger_patch_off());
 
-    std::vector<tihmstar::patchfinder64::patch> nosuid = fi->find_nosuid_off();
+    //std::vector<tihmstar::patchfinder64::patch> nosuid = fi->find_nosuid_off();
 
     kernelpatches.push_back(fi->find_remount_patch_offset());
     kernelpatches.push_back(fi->find_lwvm_patch_offsets());
-    kernelpatches.push_back(nosuid.at(0));
-    kernelpatches.push_back(nosuid.at(1));
+    //kernelpatches.push_back(nosuid.at(0));
+    //kernelpatches.push_back(nosuid.at(1));
     kernelpatches.push_back(fi->find_proc_enforce());
     kernelpatches.push_back(fi->find_amfi_patch_offsets());
     kernelpatches.push_back(fi->find_cs_enforcement_disable_amfi());
     kernelpatches.push_back(fi->find_amfi_substrate_patch());
     kernelpatches.push_back(fi->find_nonceEnabler_patch());
 
-    try {
+    /*try {
         kernelpatches.push_back(fi->find_sandbox_patch());
     } catch (tihmstar::exception &e) {
         NSLog(@"WARNING: failed to find sandbox_patch! Assuming we're on x<10.3 and continueing anyways!");
-    }
+    }*/
 
 
     auto dopatch = [&](tihmstar::patchfinder64::patch &patch){
@@ -591,22 +592,30 @@ remappage[remapcnt++] = (x & (~PMK));\
     NSLog(@"enabled patches");
 }
 
-void die(){
-    // open user client
-    CFMutableDictionaryRef matching = IOServiceMatching("IOSurfaceRoot");
-    io_service_t service = IOServiceGetMatchingService(kIOMasterPortDefault, matching);
-    io_connect_t connect = 0;
-    IOServiceOpen(service, mach_task_self(), 0, &connect);
+#define MAX_CHUNK_SIZE 0xff0
 
-    // add notification port with same refcon multiple times
-    mach_port_t port = 0;
-    mach_port_allocate(mach_task_self(), MACH_PORT_RIGHT_RECEIVE, &port);
-    uint64_t references;
-    uint64_t input[3] = {0};
-    input[1] = 1234;  // keep refcon the same value
-    while (1)
-        IOConnectCallAsyncStructMethod(connect, 17, port, &references, 1, input, sizeof(input), NULL, NULL);
+static kern_return_t task_read(task_t task, mach_vm_address_t addr, mach_vm_size_t size, void *buf)
+{
+    kern_return_t ret;
+    mach_vm_size_t remainder = size,
+                   bytes_read = 0;
+
+    for(mach_vm_address_t end = addr + size; addr < end; remainder -= size)
+    {
+        size = remainder > MAX_CHUNK_SIZE ? MAX_CHUNK_SIZE : remainder;
+        ret = mach_vm_read_overwrite(task, addr, size, (mach_vm_address_t)buf + bytes_read, &size);
+        if(ret != KERN_SUCCESS)
+        {
+            return ret;
+        }
+        bytes_read += size;
+        addr += size;
+    }
+
+    return KERN_SUCCESS;
 }
+
+#define max(a, b) (a) > (b) ? (a) : (b)
 
 extern "C" int jailbreak(void)
 {
@@ -619,33 +628,79 @@ extern "C" int jailbreak(void)
         postProgress(@"Kernelexploit failed");
         printf("Kernelexploit failed, goodbye...\n");
         sleep(3);
-        die();
         return -1;
     }
 
-    // TODO: dump kernel
-
-    tihmstar::offsetfinder64 fi("/System/Library/Caches/com.apple.kernelcaches/kernelcache"); // XXX
-
-    offsets_t *off = NULL;
-    try {
-        off = get_offsets(&fi);
-    } catch (tihmstar::exception &e) {
-        LOG("Failed jailbreak!: %s [%u]", e.what(), e.code());
-        NSString *err = [NSString stringWithFormat:@"Offset Error: %d",e.code()];
-        postProgress(err);
-        return -1;
-    }catch (std::exception &e) {
-        LOG("Failed jailbreak!: %s", e.what());
-        NSString *err = [NSString stringWithFormat:@"FATAL offset Error:\n%s",e.what()];
-        postProgress(err);
+    mach_hdr_t *hdr = (mach_hdr_t*)malloc(MAX_HEADER_SIZE),
+               *newhdr = (mach_hdr_t*)malloc(MAX_HEADER_SIZE);
+    if(!hdr || !newhdr)
+    {
         return -1;
     }
+    memset(newhdr, 0, MAX_HEADER_SIZE);
+    kern_return_t ret = task_read(ktask, kbase, MAX_HEADER_SIZE, hdr);
+    if(ret != KERN_SUCCESS)
+    {
+        LOG("task_read: %s", mach_error_string(ret));
+        return -1;
+    }
+    size_t filesize = 0;
+    CMD_ITERATE(hdr, cmd)
+    {
+        switch(cmd->cmd)
+        {
+            case MACH_LC_SEGMENT:
+                mach_seg_t *seg = (mach_seg_t*)cmd;
+                filesize = max(filesize, seg->fileoff + seg->filesize);
+                break;
+        }
+    }
+    char *buf = (char*)malloc(filesize);
+    if(!buf)
+    {
+        return -1;
+    }
+    CMD_ITERATE(hdr, cmd)
+    {
+        switch(cmd->cmd)
+        {
+            case MACH_LC_SEGMENT:
+                {
+                    mach_seg_t *seg = (mach_seg_t*)cmd;
+                    ret = task_read(ktask, seg->vmaddr, seg->filesize, buf + seg->fileoff);
+                }
+            case LC_UUID:
+            case LC_UNIXTHREAD:
+            case LC_SOURCE_VERSION:
+            case LC_FUNCTION_STARTS:
+            case LC_VERSION_MIN_MACOSX:
+            case LC_VERSION_MIN_IPHONEOS:
+            case LC_VERSION_MIN_TVOS:
+            case LC_VERSION_MIN_WATCHOS:
+                {
+                    memcpy((char*)(newhdr + 1) + newhdr->sizeofcmds, cmd, cmd->cmdsize);
+                    newhdr->sizeofcmds += cmd->cmdsize;
+                    newhdr->ncmds++;
+                }
+                break;
+        }
+    }
+    memcpy(buf, newhdr, sizeof(*newhdr) + hdr->sizeofcmds);
+    free(hdr);
+    free(newhdr);
+    hdr = NULL;
+    newhdr = NULL;
 
+    tihmstar::offsetfinder64 fi(buf, filesize);
+    LOG("weep woop");
     cb(ktask, kbase, &fi);
+
+    return 0; // XXX
 
     LOG("done kernelpatches!");
     runLaunchDaemons();
+    free(buf);
+    buf = NULL;
     printf("ok\n");
     return 0;
 }

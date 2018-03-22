@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		6848D100203CE91700A0FFE2 /* offsets.mm in Sources */ = {isa = PBXBuildFile; fileRef = 6848D0FD203CE91700A0FFE2 /* offsets.mm */; };
 		6848D104203CE93100A0FFE2 /* liboffsetfinder64.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 6848D103203CE93100A0FFE2 /* liboffsetfinder64.a */; };
 		687380C520607E690041E813 /* find.m in Sources */ = {isa = PBXBuildFile; fileRef = 687380C120607E690041E813 /* find.m */; };
 		687380C620607E690041E813 /* exploit64.m in Sources */ = {isa = PBXBuildFile; fileRef = 687380C320607E690041E813 /* exploit64.m */; };
@@ -31,8 +30,6 @@
 
 /* Begin PBXFileReference section */
 		6848D0FB203CE91700A0FFE2 /* common.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = common.h; sourceTree = "<group>"; };
-		6848D0FC203CE91700A0FFE2 /* offsets.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = offsets.h; sourceTree = "<group>"; };
-		6848D0FD203CE91700A0FFE2 /* offsets.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = offsets.mm; sourceTree = "<group>"; };
 		6848D103203CE93100A0FFE2 /* liboffsetfinder64.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = liboffsetfinder64.a; path = doubleH3lix/liboffsetfinder64.a; sourceTree = "<group>"; };
 		687380BF20607E680041E813 /* arch.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = arch.h; sourceTree = "<group>"; };
 		687380C020607E680041E813 /* find.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = find.h; sourceTree = "<group>"; };
@@ -130,8 +127,6 @@
 				87F9E9AE2039C66D00C90C05 /* jailbreak.h */,
 				87F9E9AC2039C66500C90C05 /* jailbreak.mm */,
 				6848D0FB203CE91700A0FFE2 /* common.h */,
-				6848D0FC203CE91700A0FFE2 /* offsets.h */,
-				6848D0FD203CE91700A0FFE2 /* offsets.mm */,
 				687380BF20607E680041E813 /* arch.h */,
 				687380C220607E690041E813 /* exploit64.h */,
 				687380C320607E690041E813 /* exploit64.m */,
@@ -230,7 +225,6 @@
 				87F9E9942039C51900C90C05 /* AppDelegate.m in Sources */,
 				687380C620607E690041E813 /* exploit64.m in Sources */,
 				87F9E9AD2039C66500C90C05 /* jailbreak.mm in Sources */,
-				6848D100203CE91700A0FFE2 /* offsets.mm in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
