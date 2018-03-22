@@ -194,9 +194,11 @@ void kpp(uint64_t kernbase, uint64_t slide, tihmstar::offsetfinder64 *fi){
     entryp = (uint64_t)fi->find_entry() + kernbase - KBASE;
     uint64_t rvbar = entryp & (~0xFFF);
 
-    uint64_t cpul = fi->find_register_value((tihmstar::patchfinder64::loc_t)rvbar+0x40-slide, 1)+slide;
+    /*uint64_t cpul = fi->find_register_value((tihmstar::patchfinder64::loc_t)rvbar+0x40-slide, 1)+slide;
+    uint64_t optr = fi->find_register_value((tihmstar::patchfinder64::loc_t)rvbar+0x50-slide, 20)+slide;*/
 
-    uint64_t optr = fi->find_register_value((tihmstar::patchfinder64::loc_t)rvbar+0x50-slide, 20)+slide;
+    uint64_t cpul = fi->find_register_value((tihmstar::patchfinder64::loc_t)rvbar+0x50-slide, 1)+slide;
+    uint64_t optr = fi->find_register_value((tihmstar::patchfinder64::loc_t)rvbar+0x58-slide, 20)+slide;
 
     NSLog(@"%llx", optr);
 
