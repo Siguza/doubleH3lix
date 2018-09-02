@@ -37,6 +37,8 @@
 // Not sure what'll really become of this, but it's certainly not done yet.
 // Pretty sure I'll leave iOS 11 to Ian Beer though, for the time being.
 
+#ifndef HEADLESS
+
 #include <errno.h>              // errno
 #include <sched.h>              // sched_yield
 #include <stdlib.h>             // malloc, free
@@ -1764,3 +1766,5 @@ out:;
     }
     return retval;
 }
+
+#endif

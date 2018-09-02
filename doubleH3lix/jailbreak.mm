@@ -9,6 +9,10 @@
 extern "C"{
 #include <stdio.h>
 #include <stdint.h>
+#include <dlfcn.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <mach/mach.h>
 
 #include "common.h"
 #include "v0rtex.h"
@@ -31,22 +35,26 @@ kern_return_t mach_vm_read_overwrite(vm_map_t target_task, mach_vm_address_t add
 kern_return_t mach_vm_write(vm_map_t target_task, mach_vm_address_t address, vm_offset_t data, mach_msg_type_number_t dataCnt);
 kern_return_t mach_vm_protect(vm_map_t target_task, mach_vm_address_t address, mach_vm_size_t size, boolean_t set_maximum, vm_prot_t new_protection);
 kern_return_t mach_vm_allocate(vm_map_t target, mach_vm_address_t *address, mach_vm_size_t size, int flags);
-#define copyin(to, from, size) kread(from, to, size)
-#define copyout(to, from, size) kwrite(to, from, size)
+#define copyin(to, from, size) _kread(from, to, size)
+#define copyout(to, from, size) _kwrite(to, from, size)
 
 #include <sys/utsname.h>
 #include <sys/mount.h>
 #include <spawn.h>
 #include <sys/stat.h>
 #include <copyfile.h>
-extern int (*dsystem)(const char *);
+int (*dsystem)(const char *);
 #include "pte_stuff.h"
 #include "sbops.h"
 }
 #include <vector>
 #include <liboffsetfinder64/liboffsetfinder64.hpp>
 
-#define postProgress(prg) [[NSNotificationCenter defaultCenter] postNotificationName: @"JB" object:nil userInfo:@{@"JBProgress": prg}]
+#ifndef HEADLESS
+#define postProgress(...) [[NSNotificationCenter defaultCenter] postNotificationName: @"JB" object:nil userInfo:@{@"JBProgress": __VA_ARGS__}]
+#else
+#define postProgress(...) NSLog(@"%@", __VA_ARGS__)
+#endif
 
 #define KBASE 0xfffffff007004000
 mach_port_t tfp0 = 0;
@@ -54,6 +62,7 @@ mach_port_t tfp0 = 0;
 void kpp(uint64_t kernbase, uint64_t slide, tihmstar::offsetfinder64 *fi);
 void runLaunchDaemons(void);
 
+#ifndef HEADLESS
 void suspend_all_threads() {
     thread_act_t other_thread, current_thread;
     unsigned int thread_count;
@@ -78,7 +87,6 @@ void suspend_all_threads() {
     }
 }
 
-
 void resume_all_threads() {
     thread_act_t other_thread, current_thread;
     unsigned int thread_count;
@@ -98,9 +106,13 @@ void resume_all_threads() {
         }
     }
 }
+#endif
 
-kern_return_t cb(task_t tfp0_, kptr_t kbase, void *data){
+kern_return_t cb(task_t tfp0_, kptr_t kbase, void *data)
+{
+#ifndef HEADLESS
     resume_all_threads();
+#endif
     LOG("done v0rtex!\n");
     tfp0 = tfp0_;
     tihmstar::offsetfinder64 *fi = static_cast<tihmstar::offsetfinder64 *>(data);
@@ -109,14 +121,13 @@ kern_return_t cb(task_t tfp0_, kptr_t kbase, void *data){
         kpp(kbase,kbase-KBASE,fi);
     } catch (tihmstar::exception &e) {
         LOG("Failed jailbreak!: %s [%u]", e.what(), e.code());
-        NSString *err = [NSString stringWithFormat:@"Error: %d",e.code()];
-        postProgress(err);
+        postProgress([NSString stringWithFormat:@"Error: %d",e.code()]);
     }
 
     return KERN_SUCCESS;
 }
 
-size_t kread(uint64_t where, void *p, size_t size){
+size_t _kread(uint64_t where, void *p, size_t size){
     int rv;
     size_t offset = 0;
     while (offset < size) {
@@ -126,7 +137,7 @@ size_t kread(uint64_t where, void *p, size_t size){
         }
         rv = mach_vm_read_overwrite(tfp0, where + offset, chunk, (mach_vm_address_t)p + offset, &sz);
         if (rv || sz == 0) {
-            fprintf(stderr, "[e] error reading kernel @%p\n", (void *)(offset + where));
+            NSLog(@"[e] error reading kernel @%p\n", (void *)(offset + where));
             break;
         }
         offset += sz;
@@ -136,17 +147,17 @@ size_t kread(uint64_t where, void *p, size_t size){
 
 uint64_t kread_uint64(uint64_t where){
     uint64_t value = 0;
-    size_t sz = kread(where, &value, sizeof(value));
+    size_t sz = _kread(where, &value, sizeof(value));
     return (sz == sizeof(value)) ? value : 0;
 }
 
 uint32_t kread_uint32(uint64_t where){
     uint32_t value = 0;
-    size_t sz = kread(where, &value, sizeof(value));
+    size_t sz = _kread(where, &value, sizeof(value));
     return (sz == sizeof(value)) ? value : 0;
 }
 
-size_t kwrite(uint64_t where, const void *p, size_t size){
+size_t _kwrite(uint64_t where, const void *p, size_t size){
     int rv;
     size_t offset = 0;
     while (offset < size) {
@@ -156,7 +167,7 @@ size_t kwrite(uint64_t where, const void *p, size_t size){
         }
         rv = mach_vm_write(tfp0, where + offset, (mach_vm_offset_t)p + offset, (mach_msg_type_number_t)chunk);
         if (rv) {
-            fprintf(stderr, "[e] error writing kernel @%p\n", (void *)(offset + where));
+            NSLog(@"[e] error writing kernel @%p\n", (void *)(offset + where));
             break;
         }
         offset += chunk;
@@ -165,11 +176,11 @@ size_t kwrite(uint64_t where, const void *p, size_t size){
 }
 
 size_t kwrite_uint64(uint64_t where, uint64_t value){
-    return kwrite(where, &value, sizeof(value));
+    return _kwrite(where, &value, sizeof(value));
 }
 
 size_t kwrite_uint32(uint64_t where, uint32_t value){
-    return kwrite(where, &value, sizeof(value));
+    return _kwrite(where, &value, sizeof(value));
 }
 
 uint64_t physalloc(uint64_t size) {
@@ -525,7 +536,7 @@ remappage[remapcnt++] = (x & (~PMK));\
         RemapPage(((sbops + i*(PSZ)) & (~PMK)));
     }
 
-    printf("Found sbops 0x%llx\n",sbops);
+    NSLog(@"Found sbops 0x%llx\n",sbops);
 
     WriteAnywhere64(NewPointer(sbops+offsetof(struct mac_policy_ops, mpo_file_check_mmap)), 0);
     WriteAnywhere64(NewPointer(sbops+offsetof(struct mac_policy_ops, mpo_vnode_check_rename)), 0);
@@ -578,19 +589,21 @@ remappage[remapcnt++] = (x & (~PMK));\
 
     char* nm = strdup("/dev/disk0s1s1");
     int mntr = mount("hfs", "/", 0x10000, &nm);
-    printf("Mount succeeded? %d\n",mntr);
+    NSLog(@"Mount succeeded? %d\n",mntr);
 
     if (open("/v0rtex", O_CREAT | O_RDWR, 0644)>=0){
-        printf("write test success!\n");
+        NSLog(@"write test success!\n");
         remove("/v0rtex");
     }else
-        printf("[!] write test failed!\n");
+        NSLog(@"[!] write test failed!\n");
 
 
     NSLog(@"enabled patches");
 }
 
-void die(){
+#ifndef HEADLESS
+__attribute__((noreturn)) void die()
+{
     // open user client
     CFMutableDictionaryRef matching = IOServiceMatching("IOSurfaceRoot");
     io_service_t service = IOServiceGetMatchingService(kIOMasterPortDefault, matching);
@@ -616,30 +629,30 @@ extern "C" int jailbreak(void)
         off = get_offsets(&fi);
     } catch (tihmstar::exception &e) {
         LOG("Failed jailbreak!: %s [%u]", e.what(), e.code());
-        NSString *err = [NSString stringWithFormat:@"Offset Error: %d",e.code()];
-        postProgress(err);
+        postProgress([NSString stringWithFormat:@"Offset Error: %d",e.code()]);
         return -1;
     }catch (std::exception &e) {
         LOG("Failed jailbreak!: %s", e.what());
-        NSString *err = [NSString stringWithFormat:@"FATAL offset Error:\n%s",e.what()];
-        postProgress(err);
+        postProgress([NSString stringWithFormat:@"FATAL offset Error:\n%s",e.what()]);
         return -1;
     }
 
     LOG("v0rtex\n");
     suspend_all_threads();
-    if(v0rtex(off, &cb, &fi)){
+    if(v0rtex(off, &cb, &fi))
+    {
         resume_all_threads();
-        postProgress(@"Kernelexploit failed");
-        printf("Kernelexploit failed, goodbye...\n");
-        sleep(3);
+        postProgress(@"Kernel exploit failed");
+        NSLog(@"Kernel exploit failed, goodbye...\n");
+        sleep(1);
         die();
     }
     LOG("done kernelpatches!");
     runLaunchDaemons();
-    printf("ok\n");
+    NSLog(@"ok\n");
     return 0;
 }
+#endif
 
 extern char* const* environ;
 int easyPosixSpawn(NSURL *launchPath,NSArray *arguments){
@@ -647,14 +660,14 @@ int easyPosixSpawn(NSURL *launchPath,NSArray *arguments){
     [posixSpawnArguments insertObject:[launchPath lastPathComponent] atIndex:0];
 
     int argc=(int)posixSpawnArguments.count+1;
-    printf("Number of posix_spawn arguments: %d\n",argc);
+    NSLog(@"Number of posix_spawn arguments: %d\n",argc);
     char **args=(char**)calloc(argc,sizeof(char *));
 
     for (int i=0; i<posixSpawnArguments.count; i++)
         args[i]=(char *)[posixSpawnArguments[i]UTF8String];
 
-    printf("File exists at launch path: %d\n",[[NSFileManager defaultManager]fileExistsAtPath:launchPath.path]);
-    printf("Executing %s: %s\n",launchPath.path.UTF8String,arguments.description.UTF8String);
+    NSLog(@"File exists at launch path: %d\n",[[NSFileManager defaultManager]fileExistsAtPath:launchPath.path]);
+    NSLog(@"Executing %s: %s\n",launchPath.path.UTF8String,arguments.description.UTF8String);
 
     posix_spawn_file_actions_t action;
     posix_spawn_file_actions_init(&action);
@@ -674,103 +687,155 @@ int easyPosixSpawn(NSURL *launchPath,NSArray *arguments){
     return status;
 }
 
-void runLaunchDaemons(void){
-    int r;
-    // Bearded old boostrap
-    if (![[NSFileManager defaultManager]fileExistsAtPath:@"/bin/tar"]){
-        postProgress(@"installing files");
-        NSLog(@"We will try copying %s to %s\n", [[NSBundle mainBundle]URLForResource:@"tar" withExtension:@""].path.UTF8String, [NSURL fileURLWithPath:@"/bin/tar"].path.UTF8String);
-        r = copyfile([[NSBundle mainBundle]URLForResource:@"tar" withExtension:@""].path.UTF8String, "/bin/tar", NULL, COPYFILE_ALL);
-        if(r != 0){
-            NSLog(@"copyfile returned nonzero value: %d, errno: %d, strerror: %s\n", r, errno, strerror(errno));
-            return;
-        }
-    }
-    if(![[NSFileManager defaultManager] fileExistsAtPath:@"/bin/launchctl"]){
-        postProgress(@"installing files");
-        NSLog(@"We will try copying %s to %s\n", [[NSBundle mainBundle]URLForResource:@"launchctl" withExtension:@""].path.UTF8String, "/bin/launchctl");
-        r = copyfile([[NSBundle mainBundle]URLForResource:@"launchctl" withExtension:@""].path.UTF8String, "/bin/launchctl", NULL, COPYFILE_ALL);
-        if(r != 0){
-            NSLog(@"copyfile returned nonzero value: %d, errno: %d, strerror: %s\n", r, errno, strerror(errno));
-            return;
-        }
-    }
+#ifdef HEADLESS
+extern "C"
+{
+    int downloadAndExtract(const char *file, const char *path, const char *dir);
+    CFOptionFlags popup(CFStringRef title, CFStringRef text, CFStringRef buttonOne, CFStringRef buttonTwo, CFStringRef buttonThree);
+}
+#endif
 
-    if(![[NSFileManager defaultManager] fileExistsAtPath:@"/Library/LaunchDaemons"]){
+static int ensureBootstrap(void)
+{
+    int r = 0;
+#ifdef HEADLESS
+    static bool init = false;
+    if(!init)
+    {
+        popup(CFSTR("Installation"), CFSTR("Downloading bootstrap, this may take a while."), CFSTR("OK"), NULL, NULL);
+        r = downloadAndExtract("DH.tar.xz", "/tmp/DH.tar.xz", "/tmp/DH");
+        init = true;
+    }
+#endif
+    return r;
+}
+
+void runLaunchDaemons(void)
+{
+    dsystem = (int (*)(const char *))dlsym(RTLD_DEFAULT,"system");
+    int r;
+#ifndef HEADLESS
+    const char *tarPath       = [[NSBundle mainBundle] URLForResource:@"tar" withExtension:@""].path.UTF8String,
+               *launchctlPath = [[NSBundle mainBundle] URLForResource:@"launchctl" withExtension:@""].path.UTF8String;
+    NSString *bootstrapPath   = [[NSBundle mainBundle]URLForResource:@"Cydia-10" withExtension:@"tar"].path;
+#else
+    const char *tarPath       = "/tmp/DH/tar",
+               *launchctlPath = "/tmp/DH/launchctl";
+    NSString *bootstrapPath   = (__bridge NSString*)CFSTR("/tmp/DH/Cydia-10.tar");
+#endif
+    if(![[NSFileManager defaultManager] fileExistsAtPath:@"/bin/tar"])
+    {
+        postProgress(@"installing files");
+        if(ensureBootstrap() != 0) return;
+        r = copyfile(tarPath, "/bin/tar", NULL, COPYFILE_ALL);
+        if(r != 0)
+        {
+            NSLog(@"copyfile returned nonzero value: %d, errno: %d, strerror: %s\n", r, errno, strerror(errno));
+            return;
+        }
+    }
+    if(![[NSFileManager defaultManager] fileExistsAtPath:@"/bin/launchctl"])
+    {
+        postProgress(@"installing files");
+        if(ensureBootstrap() != 0) return;
+        r = copyfile(launchctlPath, "/bin/launchctl", NULL, COPYFILE_ALL);
+        if(r != 0)
+        {
+            NSLog(@"copyfile returned nonzero value: %d, errno: %d, strerror: %s\n", r, errno, strerror(errno));
+            return;
+        }
+    }
+    if(![[NSFileManager defaultManager] fileExistsAtPath:@"/Library/LaunchDaemons"])
+    {
         postProgress(@"installing files");
         r = mkdir("/Library/LaunchDaemons", 0755);
-        if(r != 0){
+        if(r != 0)
+        {
             NSLog(@"mkdir returned nonzero value: %d, errno: %d, strerror: %s\n", r, errno, strerror(errno));
             return;
         }
     }
 
     NSLog(@"Changing permissions\n");
-    r = chmod("/bin/tar", 0777);
-    if(r != 0){
+    r = chmod("/bin/tar", 0755);
+    if(r != 0)
+    {
+        NSLog(@"chmod returned nonzero value: %d, errno: %d, strerror: %s\n", r, errno, strerror(errno));
+        return;
+    }
+    r = chmod("/bin/launchctl", 0755);
+    if(r != 0)
+    {
         NSLog(@"chmod returned nonzero value: %d, errno: %d, strerror: %s\n", r, errno, strerror(errno));
         return;
     }
 
-    r = chmod("/bin/launchctl", 0777);
-    if(r != 0){
-        NSLog(@"chmod returned nonzero value: %d, errno: %d, strerror: %s\n", r, errno, strerror(errno));
-        return;
+    if(![[NSFileManager defaultManager] fileExistsAtPath:@"/.cydia_no_stash"])
+    {
+        int fd = open("/.cydia_no_stash", O_WRONLY | O_CREAT);
+        if(fd == -1)
+        {
+            NSLog(@"Failed to create /.cydia_no_stash: errno: %d, strerror: %s\n", errno, strerror(errno));
+            return;
+        }
+        close(fd);
     }
 
     int douicache = 0;
-    // Bearded old boostrap
-    NSURL *bootstrapURL = [[NSBundle mainBundle]URLForResource:@"Cydia-10" withExtension:@"tar"];
-    if(![[NSFileManager defaultManager]fileExistsAtPath:@"/Applications/Cydia.app/"]){
+    if(![[NSFileManager defaultManager] fileExistsAtPath:@"/Applications/Cydia.app/"])
+    {
         postProgress(@"installing Cydia");
-        //NSLog(@"Didn't find Cydia.app (so we'll assume bearded old bootstrap isn't extracted, we will extract it)\n");
+        if(ensureBootstrap() != 0) return;
         NSLog(@"Extracting Cydia...\n");
-        r = easyPosixSpawn([NSURL fileURLWithPath:@"/bin/tar"], @[@"-xvf", bootstrapURL.path, @"-C", @"/", @"--preserve-permissions"]);
-        if(r != 0){
+        r = easyPosixSpawn([NSURL fileURLWithPath:@"/bin/tar"], @[@"-xvf", bootstrapPath, @"-C", @"/", @"--preserve-permissions"]);
+        if(r != 0)
+        {
             NSLog(@"posix_spawn returned nonzero value: %d, errno: %d, strerror: %s\n", r, errno, strerror(errno));
             return;
         }
         douicache = 1;
     }
 
-    NSLog(@"Touching /.bearded_old_man_no_stash\n");
-    easyPosixSpawn([NSURL fileURLWithPath:@"/bin/touch"], @[@"/.cydia_no_stash"]);
-    if(![[NSFileManager defaultManager]fileExistsAtPath:@"/.cydia_no_stash"]){
-        NSLog(@"WARNING WARNING WARNING\n");
-        NSLog(@"Even though we tried creating cydia_no_stash it looks like it's not there. So don't open the app by bearded old man (aka saurik)!\n");
-        return;
-    }
-
-
     postProgress(@"starting daemons");
-    NSLog(@"No we're not, allowing springboard to show non-default apps\n");
+    NSLog(@"No, we're not allowing springboard to show non-default apps\n");
     NSMutableDictionary *md = [[NSMutableDictionary alloc] initWithContentsOfFile:@"/var/mobile/Library/Preferences/com.apple.springboard.plist"];
-
     [md setObject:[NSNumber numberWithBool:YES] forKey:@"SBShowNonDefaultSystemApps"];
-
     [md writeToFile:@"/var/mobile/Library/Preferences/com.apple.springboard.plist" atomically:YES];
+
     r = easyPosixSpawn([NSURL fileURLWithPath:@"/usr/bin/killall"], @[@"-9", @"cfprefsd"]);
-    if(r != 0){
+    if(r != 0)
+    {
         NSLog(@"posix_spawn returned nonzero value: %d, errno: %d, strerror: %s\n", r, errno, strerror(errno));
     }
 
-    chmod("/private", 0777);
-    chmod("/private/var", 0777);
-    chmod("/private/var/mobile", 0777);
-    chmod("/private/var/mobile/Library", 0777);
+    chmod("/private", 0755);
+    chmod("/private/var", 0755);
+    chmod("/private/var/mobile", 0755);
+    chmod("/private/var/mobile/Library", 0755);
     chmod("/private/var/mobile/Library/Preferences", 0777);
 
+    dsystem("for x in /etc/rc.d/*; do \"$x\"; done;");
 
-    dsystem("echo 'really jailbroken';ls /Library/LaunchDaemons | while read a; do launchctl load /Library/LaunchDaemons/$a; done; ls /etc/rc.d | while read a; do /etc/rc.d/$a; done;");
-    //ssh workaround
-    dsystem("launchctl unload /Library/LaunchDaemons/com.openssh.sshd.plist;/usr/libexec/sshd-keygen-wrapper");
+    r = easyPosixSpawn([NSURL fileURLWithPath:@"/bin/launchctl"], @[@"load", @"/Library/LaunchDaemons"]);
+    if(r != 0)
+    {
+        NSLog(@"posix_spawn returned nonzero value: %d, errno: %d, strerror: %s\n", r, errno, strerror(errno));
+    }
 
-    if (douicache){
+    // ssh workaround
+    dsystem("launchctl unload /Library/LaunchDaemons/com.openssh.sshd.plist && /usr/libexec/sshd-keygen-wrapper");
+
+    if(douicache)
+    {
         postProgress(@"running uicache");
         dsystem("su -c uicache mobile");
     }
-    dsystem("(killall backboardd)&");
 
-    NSLog(@"done\n");
+    r = easyPosixSpawn([NSURL fileURLWithPath:@"/usr/bin/killall"], @[@"-9", @"backboardd"]);
+    if(r != 0)
+    {
+        NSLog(@"posix_spawn returned nonzero value: %d, errno: %d, strerror: %s\n", r, errno, strerror(errno));
+    }
+
     postProgress(@"done");
 }

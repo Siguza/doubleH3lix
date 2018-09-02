@@ -2,5 +2,8 @@
 project.xcworkspace
 xcuserdata
 /build
+/obj
 /Payload
 /doubleH3lix.ipa
+/libdoubleH3lix.a
+/DH.tar.xz

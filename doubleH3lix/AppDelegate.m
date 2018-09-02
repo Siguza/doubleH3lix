@@ -6,6 +6,8 @@
 //  Copyright © 2018 tihmstar. All rights reserved.
 //
 
+#ifndef HEADLESS
+
 #import "AppDelegate.h"
 
 @interface AppDelegate ()
@@ -49,3 +51,5 @@
 
 
 @end
+
+#endif

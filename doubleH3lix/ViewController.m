@@ -6,6 +6,8 @@
 //  Copyright © 2017 tihmstar. All rights reserved.
 //
 
+#ifndef HEADLESS
+
 #import "ViewController.h"
 #include "jailbreak.h"
 #include <sys/utsname.h>
@@ -110,3 +112,5 @@ double uptime(){
     });
 }
 @end
+
+#endif

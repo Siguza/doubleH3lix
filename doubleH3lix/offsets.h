@@ -1,3 +1,5 @@
+#ifndef HEADLESS
+
 #ifndef OFFSETS_H
 #define OFFSETS_H
 
@@ -45,5 +47,7 @@ typedef struct
 extern "C"
 #endif
 offsets_t* get_offsets(void*);
+
+#endif
 
 #endif

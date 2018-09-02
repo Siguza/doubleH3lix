@@ -6,6 +6,8 @@
 //  Copyright © 2018 tihmstar. All rights reserved.
 //
 
+#ifndef HEADLESS
+
 #import <UIKit/UIKit.h>
 
 @interface ViewController : UIViewController
@@ -16,3 +18,4 @@
 
 @end
 
+#endif

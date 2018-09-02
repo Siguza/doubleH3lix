@@ -1,7 +1,7 @@
 #ifndef pte_stuff_h
 #define pte_stuff_h
 
-size_t kread(uint64_t where, void *p, size_t size);
+size_t _kread(uint64_t where, void *p, size_t size);
 uint64_t kread_uint64(uint64_t where);
 uint32_t kread_uint32(uint64_t where);
 size_t kwrite(uint64_t where, const void *p, size_t size);
@@ -92,23 +92,23 @@ void parse_block_tte(uint64_t tte) {
 }
 
 void pagestuff_64(vm_address_t vmaddr, void (^pagestuff_64_callback)(vm_address_t tte_addr, int addr), vm_address_t table, int level) {
-    
+
     checkvad();
     if (!table) table = level1_table;
     if (!level) level = 1;
-    
+
     vm_address_t tteaddr = 0;
-    
-    
-    
+
+
+
     if (sz == 4096) {
         VMA_4K target_addr;
         target_addr.vmaddr = vmaddr;
-        
+
         if (level == 1) {
             target_addr.vm_info.level1_index -= 0x1c0;
         }
-        
+
         switch (level) {
             case 0:
                 tteaddr = table + TTE_INDEX(target_addr, level0);
@@ -116,23 +116,23 @@ void pagestuff_64(vm_address_t vmaddr, void (^pagestuff_64_callback)(vm_address_
             case 1:
                 tteaddr = table + TTE_INDEX(target_addr, level1);
                 break;
-                
+
             case 2:
                 tteaddr = table + TTE_INDEX(target_addr, level2);
                 break;
-                
+
             case 3:
                 tteaddr = table + TTE_INDEX(target_addr, level3);
                 break;
-                
+
             default:
                 break;
         }
-        
+
     } else if (sz == 4096*4) {
         VMA_16K target_addr;
         target_addr.vmaddr = vmaddr;
-        
+
         switch (level) {
             case 0:
                 tteaddr = table + TTE_INDEX(target_addr, level0);
@@ -140,28 +140,28 @@ void pagestuff_64(vm_address_t vmaddr, void (^pagestuff_64_callback)(vm_address_
             case 1:
                 tteaddr = table + TTE_INDEX(target_addr, level1);
                 break;
-                
+
             case 2:
                 tteaddr = table + TTE_INDEX(target_addr, level2);
                 break;
-                
+
             case 3:
                 tteaddr = table + TTE_INDEX(target_addr, level3);
                 break;
-                
+
             default:
                 break;
         }
-        
-        
+
+
     }
-    
+
     //parse_block_tte(level1_entry);
-    
+
     pagestuff_64_callback(tteaddr, level);
-    
+
     uint64_t level1_entry = ReadAnywhere64(tteaddr);
-    
+
     if (TTE_GET(level1_entry, TTE_IS_TABLE_MASK) && level != 3) {
         pagestuff_64(vmaddr, pagestuff_64_callback, (TTE_GET(level1_entry, TTE_PHYS_VALUE_MASK)) - gPhysBase + gVirtBase, level + 1);
     }
@@ -175,10 +175,9 @@ uint64_t findphys_real(uint64_t virtaddr) {
             physvar = TTE_GET(tte, TTE_PHYS_VALUE_MASK);
         }
     }, level1_table, isvad ? 1 : 2);
-    
+
     return physvar;
-    
+
 }
 
 #endif
-

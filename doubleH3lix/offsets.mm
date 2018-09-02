@@ -1,3 +1,5 @@
+#ifndef HEADLESS
+
 #include <errno.h>
 #include <string.h>             // strcmp, strerror
 #include <sys/utsname.h>        // uname
@@ -14,7 +16,7 @@ extern "C" offsets_t* get_offsets(void *fi_)
     tihmstar::offsetfinder64 *fi = static_cast<tihmstar::offsetfinder64 *>(fi_);
     if (!didInit){
         offs.base =                             0xfffffff007004000;
-        
+
         offs.sizeof_task =                      (kptr_t)fi->find_sizeof_task();
         offs.task_itk_self =                    (kptr_t)fi->find_task_itk_self();
         offs.task_itk_registered =              (kptr_t)fi->find_task_itk_registered();
@@ -26,12 +28,12 @@ extern "C" offsets_t* get_offsets(void *fi_)
         offs.iouserclient_ipc =                 (kptr_t)fi->find_iouserclient_ipc();
         offs.vtab_get_retain_count =            (kptr_t)fi->find_vtab_get_retain_count();
         offs.vtab_get_external_trap_for_index = (kptr_t)fi->find_vtab_get_external_trap_for_index();
-        
+
         offs.zone_map =                         (kptr_t)fi->find_zone_map();
         offs.kernel_map =                       (kptr_t)fi->find_kernel_map();
         offs.kernel_task =                      (kptr_t)fi->find_kernel_task();
         offs.realhost =                         (kptr_t)fi->find_realhost();
-        
+
         offs.copyin =                           (kptr_t)fi->find_copyin();
         offs.copyout =                          (kptr_t)fi->find_copyout();
         offs.chgproccnt =                       (kptr_t)fi->find_chgproccnt();
@@ -45,3 +47,5 @@ extern "C" offsets_t* get_offsets(void *fi_)
     }
     return &offs;
 }
+
+#endif
