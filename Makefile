@@ -23,11 +23,7 @@ build/Release-iphoneos:
 
 headless: $(HEADLESS)
 
-#$(HEADLESS): $(TARGET)/*.h $(TARGET)/*.m $(TARGET)/*.mm $(INC)/liboffsetfinder64/*.h $(INC)/liboffsetfinder64/*.hpp $(LIB)/*.a
-#	xcrun -sdk iphoneos clang++ -arch arm64 -o $@ -Wall -O3 -DHEADLESS=1 -xobjective-c++ -std=gnu++14 $(TARGET)/*.mm -xobjective-c $(TARGET)/*.m -I$(INC) -L$(LIB) -loffsetfinder64 -limg4tool -lplist++ -lplist
-
 $(HEADLESS): $(addsuffix .o, $(addprefix $(OBJ)/c/, $(DEP_C))) $(addsuffix .o, $(addprefix $(OBJ)/c++/, $(DEP_CXX)))
-#	xcrun -sdk iphoneos clang++ -arch arm64 -o $@ $(FLAGS) $^ -L$(LIB) -loffsetfinder64 -limg4tool -lplist++ -lplist -F. -framework IOKit
 	xcrun -sdk iphoneos libtool -static -o $@ $^
 
 $(OBJ)/c/%.o: $(TARGET)/%.m | $(OBJ)/c

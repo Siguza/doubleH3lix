@@ -11,6 +11,7 @@
 		6848D101203CE91700A0FFE2 /* v0rtex.m in Sources */ = {isa = PBXBuildFile; fileRef = 6848D0FF203CE91700A0FFE2 /* v0rtex.m */; };
 		6848D104203CE93100A0FFE2 /* liboffsetfinder64.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 6848D103203CE93100A0FFE2 /* liboffsetfinder64.a */; };
 		68805418203CEB060003A817 /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 68805417203CEB060003A817 /* IOKit.framework */; };
+		68EDD1EC2141C79300FE4F5A /* libcompression.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 68EDD1EB2141C79300FE4F5A /* libcompression.tbd */; };
 		87149C6D204872DB009658CA /* Cydia-10.tar in Resources */ = {isa = PBXBuildFile; fileRef = 87149C6C204872DB009658CA /* Cydia-10.tar */; };
 		872C2D6C203EE37600929D9E /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 87F9E9982039C51900C90C05 /* Main.storyboard */; };
 		8757D0A2203CF5C500B3A566 /* libplist.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 8757D0A0203CF5C500B3A566 /* libplist.a */; };
@@ -36,6 +37,7 @@
 		6848D0FF203CE91700A0FFE2 /* v0rtex.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = v0rtex.m; sourceTree = "<group>"; };
 		6848D103203CE93100A0FFE2 /* liboffsetfinder64.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = liboffsetfinder64.a; path = doubleH3lix/liboffsetfinder64.a; sourceTree = "<group>"; };
 		68805417203CEB060003A817 /* IOKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = IOKit.framework; sourceTree = "<group>"; };
+		68EDD1EB2141C79300FE4F5A /* libcompression.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libcompression.tbd; path = usr/lib/libcompression.tbd; sourceTree = SDKROOT; };
 		87149C6C204872DB009658CA /* Cydia-10.tar */ = {isa = PBXFileReference; lastKnownFileType = archive.tar; name = "Cydia-10.tar"; path = "doubleH3lix/jbresources/Cydia-10.tar"; sourceTree = "<group>"; };
 		8757D090203CF2CB00B3A566 /* libapple_crypto.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libapple_crypto.tbd; path = usr/lib/libapple_crypto.tbd; sourceTree = SDKROOT; };
 		8757D092203CF2DB00B3A566 /* libboringssl.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libboringssl.tbd; path = usr/lib/libboringssl.tbd; sourceTree = SDKROOT; };
@@ -67,6 +69,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				68EDD1EC2141C79300FE4F5A /* libcompression.tbd in Frameworks */,
 				87C4C2CA203DE1AD0047802A /* libimg4tool.a in Frameworks */,
 				8757D0A2203CF5C500B3A566 /* libplist.a in Frameworks */,
 				8757D0A3203CF5C500B3A566 /* libplist++.a in Frameworks */,
@@ -81,6 +84,7 @@
 		6848D102203CE93100A0FFE2 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				68EDD1EB2141C79300FE4F5A /* libcompression.tbd */,
 				87C4C2C9203DE1AD0047802A /* libimg4tool.a */,
 				8757D0A0203CF5C500B3A566 /* libplist.a */,
 				8757D0A1203CF5C500B3A566 /* libplist++.a */,
