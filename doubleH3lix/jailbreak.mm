@@ -12,6 +12,7 @@ extern "C"{
 #include <dlfcn.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <signal.h>
 #include <mach/mach.h>
 
 #include "common.h"
@@ -769,6 +770,11 @@ void runLaunchDaemons(void)
         NSLog(@"chmod returned nonzero value: %d, errno: %d, strerror: %s\n", r, errno, strerror(errno));
         return;
     }
+    chmod("/private", 0755);
+    chmod("/private/var", 0755);
+    chmod("/private/var/mobile", 0755);
+    chmod("/private/var/mobile/Library", 0755);
+    chmod("/private/var/mobile/Library/Preferences", 0777);
 
     if(![[NSFileManager defaultManager] fileExistsAtPath:@"/.cydia_no_stash"])
     {
@@ -790,7 +796,7 @@ void runLaunchDaemons(void)
         r = easyPosixSpawn([NSURL fileURLWithPath:@"/bin/tar"], @[@"-xvf", bootstrapPath, @"-C", @"/", @"--preserve-permissions"]);
         if(r != 0)
         {
-            NSLog(@"posix_spawn returned nonzero value: %d, errno: %d, strerror: %s\n", r, errno, strerror(errno));
+            NSLog(@"posix_spawn(tar) returned nonzero value: %d, errno: %d, strerror: %s\n", r, errno, strerror(errno));
             return;
         }
         douicache = 1;
@@ -802,28 +808,34 @@ void runLaunchDaemons(void)
     [md setObject:[NSNumber numberWithBool:YES] forKey:@"SBShowNonDefaultSystemApps"];
     [md writeToFile:@"/var/mobile/Library/Preferences/com.apple.springboard.plist" atomically:YES];
 
+#if 0
     r = easyPosixSpawn([NSURL fileURLWithPath:@"/usr/bin/killall"], @[@"-9", @"cfprefsd"]);
     if(r != 0)
     {
-        NSLog(@"posix_spawn returned nonzero value: %d, errno: %d, strerror: %s\n", r, errno, strerror(errno));
+        NSLog(@"posix_spawn(killall) returned nonzero value: %d, errno: %d, strerror: %s\n", r, errno, strerror(errno));
     }
-
-    chmod("/private", 0755);
-    chmod("/private/var", 0755);
-    chmod("/private/var/mobile", 0755);
-    chmod("/private/var/mobile/Library", 0755);
-    chmod("/private/var/mobile/Library/Preferences", 0777);
 
     dsystem("for x in /etc/rc.d/*; do \"$x\"; done;");
 
     r = easyPosixSpawn([NSURL fileURLWithPath:@"/bin/launchctl"], @[@"load", @"/Library/LaunchDaemons"]);
     if(r != 0)
     {
-        NSLog(@"posix_spawn returned nonzero value: %d, errno: %d, strerror: %s\n", r, errno, strerror(errno));
+        NSLog(@"posix_spawn(launchctl load) returned nonzero value: %d, errno: %d, strerror: %s\n", r, errno, strerror(errno));
     }
 
     // ssh workaround
+#if 0
     dsystem("launchctl unload /Library/LaunchDaemons/com.openssh.sshd.plist && /usr/libexec/sshd-keygen-wrapper");
+#else
+    if([[NSFileManager defaultManager] fileExistsAtPath:@"/usr/libexec/sshd-keygen-wrapper"] && [[NSFileManager defaultManager] fileExistsAtPath:@"/Library/LaunchDaemons/com.openssh.sshd.plist"])
+    {
+        r = easyPosixSpawn([NSURL fileURLWithPath:@"/bin/launchctl"], @[@"unload", @"/Library/LaunchDaemons/com.openssh.sshd.plist"]);
+        if(r != 0)
+        {
+            NSLog(@"posix_spawn(launchctl unload) returned nonzero value: %d, errno: %d, strerror: %s\n", r, errno, strerror(errno));
+        }
+    }
+#endif
 
     if(douicache)
     {
@@ -831,11 +843,127 @@ void runLaunchDaemons(void)
         dsystem("su -c uicache mobile");
     }
 
+#if 0
     r = easyPosixSpawn([NSURL fileURLWithPath:@"/usr/bin/killall"], @[@"-9", @"backboardd"]);
     if(r != 0)
     {
         NSLog(@"posix_spawn returned nonzero value: %d, errno: %d, strerror: %s\n", r, errno, strerror(errno));
     }
+#else
+    /*if(fork() == 0)
+    {
+        usleep(100);
+
+        // Suck it
+        sig_t oldhup = signal(SIGHUP,  SIG_IGN);
+        //sig_t oldint = signal(SIGINT,  SIG_IGN);
+        //sig_t oldterm = signal(SIGTERM, SIG_IGN);
+
+        int pid = fork();
+        if(pid == 0)
+        {
+            //NSLog(@"running ldrestart\n");
+            //r = execl("/usr/bin/ldrestart", "/usr/bin/ldrestart", NULL);
+            //NSLog(@"execl returned: %d, errno: %d, strerror: %s\n", r, errno, strerror(errno));
+            r = 0;
+        }
+        else
+        {
+            waitpid(pid, &r, 0);
+
+            // Revert
+            signal(SIGHUP,  oldhup);
+            //signal(SIGINT,  oldint);
+            //signal(SIGTERM, oldterm);
+
+            if(r != 0)
+            {
+                NSLog(@"child exit status: %d\n", r);
+            }
+            else
+            {*/
+                NSLog(@"ldrestart done");
+                if([[NSFileManager defaultManager] fileExistsAtPath:@"/usr/libexec/sshd-keygen-wrapper"])
+                {
+                    /*r = easyPosixSpawn([NSURL fileURLWithPath:@"/usr/libexec/sshd-keygen-wrapper"], @[]);
+                    if(r != 0)
+                    {
+                        NSLog(@"posix_spawn(ssh) returned nonzero value: %d, errno: %d, strerror: %s\n", r, errno, strerror(errno));
+                    }*/
+                    dsystem("/usr/libexec/sshd-keygen-wrapper");
+                }
+            /*}
+        }
+        exit(r);
+    }*/
+#endif
+#else
+    if(douicache)
+    {
+        postProgress(@"running uicache");
+        dsystem("su -c uicache mobile");
+    }
+#define PLIST_PATH  "/tmp/0.reload.plist"
+#define SCRIPT_PATH "/tmp/0.reload"
+    const char *plist  = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+                         "<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">"
+                         "<plist version=\"1.0\">"
+                            "<dict>"
+                                "<key>Label</key>"
+                                "<string>0.reload</string>"
+                                "<key>ProgramArguments</key>"
+                                "<array>"
+                                    "<string>" SCRIPT_PATH "</string>"
+                                "</array>"
+                                "<key>RunAtLoad</key>"
+                                "<true/>"
+                                "<key>LaunchOnlyOnce</key>"
+                                "<true/>"
+                            "</dict>"
+                         "</plist>";
+    const char *script = "#!/bin/sh\n"
+                         "set -e;\n"
+                         "shopt -s nullglob;\n"
+                         "for x in /Library/LaunchDaemons/*; do if [ \"$x\" != '/Library/LaunchDaemons/com.openssh.sshd.plist' ]; then /bin/launchctl load \"$x\"; fi; done;\n"
+                         "for x in /etc/rc.d/*; do \"$x\"; done;\n"
+                         "if [ -e /usr/libexec/sshd-keygen-wrapper ]; then /usr/libexec/sshd-keygen-wrapper; fi;\n"
+                         //"(/bin/launchctl unload " PLIST_PATH "; /usr/bin/ldrestart)&\n"
+                         "/usr/bin/ldrestart;\n"
+                         "/bin/launchctl unload " PLIST_PATH ";\n"
+                         "exit 0;\n";
+    FILE *f = fopen(PLIST_PATH, "w");
+    if(!f)
+    {
+        NSLog(@"Failed to create " PLIST_PATH ": errno: %d, strerror: %s\n", errno, strerror(errno));
+    }
+    else
+    {
+        fwrite(plist, strlen(plist), 1, f);
+        fclose(f);
+
+        f = fopen(SCRIPT_PATH, "w");
+        if(!f)
+        {
+            NSLog(@"Failed to create " SCRIPT_PATH ": errno: %d, strerror: %s\n", errno, strerror(errno));
+        }
+        else
+        {
+            fwrite(script, strlen(script), 1, f);
+            fclose(f);
+
+            chown(PLIST_PATH,  0, 0);
+            chown(SCRIPT_PATH, 0, 0);
+            chmod(PLIST_PATH,  0644);
+            chmod(SCRIPT_PATH, 0755);
+
+            r = easyPosixSpawn([NSURL fileURLWithPath:@"/bin/launchctl"], @[@"load", @"" PLIST_PATH]);
+            if(r != 0)
+            {
+                NSLog(@"posix_spawn(launchctl load) returned nonzero value: %d, errno: %d, strerror: %s\n", r, errno, strerror(errno));
+            }
+        }
+    }
+#endif
 
     postProgress(@"done");
 }
